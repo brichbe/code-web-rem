@@ -3,13 +3,13 @@ package com.codeweb.rem.model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StackTraceExecution
+public class StackTraceRecordedExecution
 {
   private final String projName;
   private final long startDtg;
-  private final List<MultiThreadStackTraceEntries> entries = new ArrayList<>();
+  private final List<StackTraceTimedRecording> recordings = new ArrayList<>();
 
-  public StackTraceExecution(String name, long start)
+  public StackTraceRecordedExecution(String name, long start)
   {
     super();
     this.projName = name;
@@ -26,14 +26,14 @@ public class StackTraceExecution
     return startDtg;
   }
 
-  public void addEntry(MultiThreadStackTraceEntries entry)
+  public void addRecording(StackTraceTimedRecording record)
   {
-    this.entries.add(entry);
+    this.recordings.add(record);
   }
 
-  public List<MultiThreadStackTraceEntries> getEntries()
+  public List<StackTraceTimedRecording> getRecordings()
   {
-    return entries;
+    return recordings;
   }
 
 }

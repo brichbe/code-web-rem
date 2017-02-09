@@ -4,12 +4,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-import com.codeweb.rem.model.MultiThreadStackTraceEntries;
-import com.codeweb.rem.model.StackTraceEntry;
-import com.codeweb.rem.model.StackTraceExecution;
+import com.codeweb.rem.model.StackTraceExecutingClassRecording;
+import com.codeweb.rem.model.StackTraceRecordedExecution;
+import com.codeweb.rem.model.StackTraceTimedRecording;
+import com.codeweb.rem.model.StackTraceSingleThreadRecording;
 import com.codeweb.ssa.model.ProjectPackage;
 import com.codeweb.ssa.model.ProjectSrcFile;
 import com.codeweb.ssa.model.ProjectStructure;
@@ -17,15 +20,43 @@ import com.codeweb.ssa.util.FileIO;
 
 public class StackTraceRecorder
 {
-  private final StackTraceExecution recordedExecution;
+  private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+  private final long recordRate;
+  private final StackTraceRecordedExecution recordedExecution;
   private final Map<String, Collection<String>> validPackagesAndTheirClasses = new HashMap<>();
 
-  public StackTraceRecorder(ProjectStructure projStructure)
+  public StackTraceRecorder(ProjectStructure projStructure, long recordFreq)
   {
     super();
-    this.recordedExecution = new StackTraceExecution(projStructure.getProjName(), System.currentTimeMillis());
+    this.recordedExecution = new StackTraceRecordedExecution(projStructure.getProjName(), System.currentTimeMillis());
+    this.recordRate = recordFreq;
 
     this.buildPackageFilter(projStructure.getTopPackages());
+  }
+
+  public void start()
+  {
+    executor.scheduleAtFixedRate(new Runnable()
+    {
+      @Override
+      public void run()
+      {
+        recordCurrentState();
+      }
+    }, recordRate, recordRate, TimeUnit.MILLISECONDS);
+  }
+
+  public void stop()
+  {
+    executor.shutdownNow();
+    try
+    {
+      FileIO.writeJson(recordedExecution, recordedExecution.getProjName(), recordedExecution.getStartDtg(), ".rem");
+    }
+    catch (IOException e)
+    {
+      e.printStackTrace();
+    }
   }
 
   private void buildPackageFilter(Collection<ProjectPackage> packages)
@@ -46,19 +77,18 @@ public class StackTraceRecorder
     }
   }
 
-  public void recordCurrentState()
+  private void recordCurrentState()
   {
     Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
     if (allStackTraces != null && !allStackTraces.isEmpty())
     {
-      MultiThreadStackTraceEntries allThreadEntries = new MultiThreadStackTraceEntries(System.currentTimeMillis());
+      StackTraceTimedRecording stackTraceTimedRecording = new StackTraceTimedRecording(System.currentTimeMillis());
       for (Thread thread : allStackTraces.keySet())
       {
         StackTraceElement[] stElements = allStackTraces.get(thread);
         if (stElements.length > 0)
         {
-          List<String> pkgs = new ArrayList<>();
-          List<String> classes = new ArrayList<>();
+          StackTraceSingleThreadRecording threadRecording = new StackTraceSingleThreadRecording(thread.getName());
           for (StackTraceElement ste : stElements)
           {
             String pkgAndClass = ste.getClassName();
@@ -75,8 +105,7 @@ public class StackTraceRecorder
               }
               if (validClassNames.contains(cls))
               {
-                pkgs.add(pkg);
-                classes.add(cls);
+                threadRecording.addRecording(new StackTraceExecutingClassRecording(pkg, cls));
               }
               else
               {
@@ -84,23 +113,16 @@ public class StackTraceRecorder
               }
             }
           }
-
-          if (!pkgs.isEmpty() && !classes.isEmpty())
+          if (threadRecording.getNumRecordings() > 0)
           {
-            StackTraceEntry entry = new StackTraceEntry(thread.getName(), pkgs, classes);
-            allThreadEntries.addEntry(entry);
+            stackTraceTimedRecording.addRecording(threadRecording);
           }
         }
       }
-      if (allThreadEntries.getNumEntries() > 0)
+      if (stackTraceTimedRecording.getNumRecordings() > 0)
       {
-        this.recordedExecution.addEntry(allThreadEntries);
+        this.recordedExecution.addRecording(stackTraceTimedRecording);
       }
     }
-  }
-
-  public void finalize() throws IOException
-  {
-    FileIO.writeJson(recordedExecution, recordedExecution.getProjName(), recordedExecution.getStartDtg(), ".rem");
   }
 }

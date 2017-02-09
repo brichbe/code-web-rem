@@ -3,7 +3,7 @@ package com.codeweb.rem;
 import java.io.File;
 import java.io.IOException;
 
-import com.codeweb.rem.monitor.StackTraceMonitor;
+import com.codeweb.rem.record.StackTraceRecorder;
 import com.codeweb.ssa.model.ProjectStructure;
 import com.codeweb.ssa.util.FileIO;
 
@@ -12,7 +12,7 @@ import com.codeweb.ssa.util.FileIO;
  */
 public class REM
 {
-  private static StackTraceMonitor monitor = null;
+  private static StackTraceRecorder monitor = null;
 
   public static void start(String ssaFilePath, long monitorFreq) throws IOException
   {
@@ -24,7 +24,7 @@ public class REM
     File ssaFile = new File(ssaFilePath);
     if (ssaFile.exists() && ssaFile.canRead())
     {
-      monitor = new StackTraceMonitor(FileIO.read(ssaFile, ProjectStructure.class), monitorFreq);
+      monitor = new StackTraceRecorder(FileIO.read(ssaFile, ProjectStructure.class), monitorFreq);
       monitor.start();
     }
   }
