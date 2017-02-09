@@ -24,8 +24,8 @@ public class MultiThreadStackTraceEntries
     this.entries.add(entry);
   }
 
-  public List<StackTraceEntry> getEntries()
+  public int getNumEntries()
   {
-    return entries;
+    return entries.size();
   }
 }

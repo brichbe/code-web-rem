@@ -4,8 +4,12 @@ import java.io.File;
 import java.io.IOException;
 
 import com.codeweb.rem.monitor.StackTraceMonitor;
+import com.codeweb.ssa.model.ProjectStructure;
 import com.codeweb.ssa.util.FileIO;
 
+/**
+ * Hook this class into the application you wish to monitor.
+ */
 public class REM
 {
   private static StackTraceMonitor monitor = null;
@@ -20,7 +24,7 @@ public class REM
     File ssaFile = new File(ssaFilePath);
     if (ssaFile.exists() && ssaFile.canRead())
     {
-      monitor = new StackTraceMonitor(FileIO.read(ssaFile), monitorFreq);
+      monitor = new StackTraceMonitor(FileIO.read(ssaFile, ProjectStructure.class), monitorFreq);
       monitor.start();
     }
   }

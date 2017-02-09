@@ -1,16 +1,16 @@
 package com.codeweb.rem.monitor;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import com.codeweb.rem.record.StackTraceRecorder;
 import com.codeweb.ssa.model.ProjectStructure;
 
 public class StackTraceMonitor
 {
-  private final Timer timer = new Timer(true);
+  private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
   private final long monitorFreq;
   private final StackTraceRecorder recorder;
 
@@ -23,22 +23,20 @@ public class StackTraceMonitor
 
   public void start()
   {
-    timer.scheduleAtFixedRate(new TimerTask()
+    executor.scheduleAtFixedRate(new Runnable()
     {
       @Override
       public void run()
       {
-//        System.out.println("--- Start ---");
-        Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
-        recorder.record(allStackTraces);
-//        System.out.println("--- End ---");
+        recorder.recordCurrentState();
+
       }
-    }, monitorFreq, monitorFreq);
+    }, monitorFreq, monitorFreq, TimeUnit.MILLISECONDS);
   }
 
   public void stop()
   {
-    timer.cancel();
+    executor.shutdownNow();
     try
     {
       recorder.finalize();
